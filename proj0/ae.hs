@@ -38,6 +38,7 @@ data AE where
 
 -- AST Pretty Printer
 
+-- NOTE: Added multiplication and division
 pprint :: AE -> String
 pprint (Num n) = show n
 pprint (Plus n m) = "(" ++ pprint n ++ "+" ++ pprint m ++ ")"
@@ -53,6 +54,7 @@ pprint (Div n m) = "(" ++ pprint n ++ "/" ++ pprint m ++ ")"
 expr :: Parser AE
 expr = buildExpressionParser operators term
 
+-- NOTE: Added multiplication and division
 operators = [ 
               [ inFix "*" Mult AssocLeft
               , inFix "/" Div AssocLeft ]
@@ -69,7 +71,9 @@ term = parens lexer expr <|> numExpr
 
 -- Parser invocation
 
--- ADDing this here. Not sure how necessary.
+-- NOTE:
+-- Accepts input like `parseAE "5+10/2"`, returns an Abstract form
+-- (Didn't realize the quotes were necessary for a bit)
 parseAE :: String -> AE
 
 parseAE = parseString expr
@@ -78,6 +82,9 @@ parseAEFile = parseFile expr
 
 -- Evaluation Function
 
+-- NOTE:
+-- Accepts input like `eval (Plus t1 t2)` exactly, returns AE result of
+-- operation.
 eval :: AE -> AE
 eval (Num x) = (Num x)
 eval (Plus t1 t2) = let (Num v1) = (eval t1)
@@ -94,6 +101,9 @@ eval (Div t1 t2) = let (Num v1) = (eval t1)
                    in (Num (div v1 v2))
 
 -- Interpreter = parse + eval
+
+-- NOTE:
+-- Accepts input like `interp "5+10/2"`, returns eval'd value.
 interp :: String -> AE
 interp = eval . parseAE
 
