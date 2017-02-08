@@ -34,6 +34,8 @@ data AE where
   Minus :: AE -> AE -> AE
   Mult :: AE -> AE -> AE
   Div :: AE -> AE -> AE
+  -- Has to be capital (unfortunately) as a constructor
+  If0 :: AE -> AE -> AE -> AE
   deriving (Show,Eq)
 
 -- AST Pretty Printer
@@ -43,8 +45,11 @@ pprint :: AE -> String
 pprint (Num n) = show n
 pprint (Plus n m) = "(" ++ pprint n ++ "+" ++ pprint m ++ ")"
 pprint (Minus n m) = "(" ++ pprint n ++ "-" ++ pprint m ++ ")"
+
 pprint (Mult n m) = "(" ++ pprint n ++ "*" ++ pprint m ++ ")"
 pprint (Div n m) = "(" ++ pprint n ++ "/" ++ pprint m ++ ")"
+
+pprint (If0 m n o) = "(if " ++ pprint m ++ " then " ++ pprint n ++ " else " ++ pprint m ++ ")"
 
 --instance Show AE where
 --  show = pprint
@@ -67,7 +72,19 @@ numExpr :: Parser AE
 numExpr = do i <- integer lexer
              return (Num (fromInteger i))
 
-term = parens lexer expr <|> numExpr
+-- mostly from here:
+-- https://wiki.haskell.org/Parsing_expressions_and_statements#Statement_parser
+if0Expr :: Parser AE
+if0Expr = do 
+            reserved lexer "if0"
+            n <- expr
+            reserved lexer "then"
+            m <- expr
+            reserved lexer "else"
+            o <- expr
+            return (If0 n m o)
+
+term = parens lexer expr <|> numExpr <|> if0Expr
 
 -- Parser invocation
 
@@ -87,18 +104,26 @@ parseAEFile = parseFile expr
 -- operation.
 eval :: AE -> AE
 eval (Num x) = (Num x)
+
 eval (Plus t1 t2) = let (Num v1) = (eval t1)
                         (Num v2) = (eval t2)
                     in (Num (v1+v2))
 eval (Minus t1 t2) = let (Num v1) = (eval t1)
                          (Num v2) = (eval t2)
                      in (Num (v1-v2))
+
+
 eval (Mult t1 t2) = let (Num v1) = (eval t1)
                         (Num v2) = (eval t2)
                     in (Num (v1*v2))
 eval (Div t1 t2) = let (Num v1) = (eval t1)
                        (Num v2) = (eval t2)
                    in (Num (div v1 v2))
+eval (If0 t1 t2 t3) = let (Num v1) = (eval t1)
+                          (Num v2) = (eval t2)
+                          (Num v3) = (eval t3)
+                      in case v1 of 0 -> (Num v2)
+                                    _ -> (Num v3)
 
 -- Interpreter = parse + eval
 
