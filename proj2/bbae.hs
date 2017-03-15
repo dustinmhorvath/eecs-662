@@ -226,8 +226,13 @@ eval env (If c t e) = let c' = (eval env c)
                         (Right _) -> (Left "Type error in if")
 
 eval env (Seq t1 t2) = seq (eval env t1) (eval env t2)
-eval env (Print t) = let t' = eval env t in
-                       (eval env (seq (unsafePerformIO (print t')) (Num 0)))
+eval env (Print t) = --let t' = eval env t in
+                       (eval env (seq (unsafePerformIO (print t)) (Num 0)))
+
+
+
+
+-- bind with subst machinery below here
 
 subst :: String -> BBAE -> BBAE -> BBAE
 subst _ _ (Num x) = (Num x)
