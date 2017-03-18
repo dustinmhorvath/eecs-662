@@ -22,18 +22,11 @@ import ParserUtils
 -- Doing a BAD
 import System.IO.Unsafe
 
---
--- Simple caculator with variables extended Booleans and both static and
--- dynamic type checking.
---
--- Author: Perry Alexander
--- Date: Wed Jul 13 11:24:46 CDT 2016
---
--- Source files for the Boolean Binding Arithmetic Expressions (BBAE)
--- language from PLIH
---
+-- Dustin Horvath
+-- 03/17/17
+-- bbae.hs: basic interpreter that adds booleans, environments, simple list
+-- structures.
 
--- BBAE AST Definition
 
 type Env = [(String,BBAE)]
 type Cont = [(String,TBBAE)]
@@ -228,6 +221,9 @@ eval env (If c t e) = let c' = (eval env c)
                         (Left _) -> c'
                         (Right (Boolean v)) -> if v then (eval env t) else (eval env e)
                         (Right _) -> (Left "Type error in if")
+
+
+
 
 eval env (Seq t1 t2) = seq (eval env t1) (eval env t2)
 eval env (Print t) = --let t' = eval env t in
