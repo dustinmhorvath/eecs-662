@@ -63,19 +63,6 @@ data BBAE where
   Empty :: BBAE
   deriving (Show,Eq)
 
--- Pretty printer because why not
-pprint :: BBAE -> String
-pprint (Num n) = show n
-pprint (Boolean b) = show b
-pprint (Plus n m) = "(" ++ pprint n ++ " + " ++ pprint m ++ ")"
-pprint (Minus n m) = "(" ++ pprint n ++ " - " ++ pprint m ++ ")"
-pprint (And n m) = "(" ++ pprint n ++ " && " ++ pprint m ++ ")"
-pprint (Leq n m) = "(" ++ pprint n ++ " <= " ++ pprint m ++ ")"
-pprint (IsZero m) = "(isZero " ++ pprint m ++ ")"
-pprint (If c n m) = "(if " ++ pprint c ++ " then " ++ pprint n ++ " else " ++ pprint m ++ ")"
-pprint (Id s) = s
-pprint (Bind n v b) = "(bind " ++ n ++ " = " ++ pprint v ++ " in " ++ pprint b ++ ")"
-
 
 
 -- Parser
@@ -173,6 +160,8 @@ term = parens lexer expr
        <|> emptyExpr
        <|> printExpr
        <|> seqExpr
+       -- Oddly enough, I had problems with identExpr when it was farther up
+       -- the list
        <|> identExpr
        
 
@@ -183,7 +172,7 @@ parseBBAE = parseString expr
 parseBBAEFile = parseFile expr
 
 
-eval ::  Env -> BBAE -> Either String BBAE
+eval :: Env -> BBAE -> Either String BBAE
 eval env (Num x) = (Right (Num x))
 eval env (Boolean b) = (Right (Boolean b))
 eval env (Plus l r) = let l' = (eval env l)
@@ -247,23 +236,24 @@ eval env (Print t) = --let t' = eval env t in
 
 
 eval env (Empty) = (Right Empty)
-eval env (IsEmpty l) =  let (Right l') = eval env l in
-                        case l' of
-                          Empty -> (Right (Boolean True))
+eval env (IsEmpty l) =  let (Right l') = eval env l 
+                        in case l' of
+                          (Empty) -> (Right (Boolean True))
                           _ -> (Right (Boolean False))
-eval env (First l) =  let (Right l') = eval env l in
-                      case l' of
-                        Cons f r -> (Right f)
+eval env (First l) =  let (Right l') = eval env l 
+                      in case l' of
+                        (Cons f r) -> (Right f)
                         _ -> (Left "Not valid list")
-eval env (Rest l) = let (Right l') = eval env l in
-                    case l' of
-                      Cons f r -> (Right r)
+eval env (Rest l) = let (Right l') = eval env l
+                    in case l' of
+                      (Cons f r) -> (Right r)
                       _ -> (Left "Not valid list")
 
 eval env (Cons f r) = do {
                         f' <- eval env f;
                         r' <- eval env r;
                         return (Cons f' r');
+                        -- I don't *think* error handling is needed here? =/
                       }
 
 
