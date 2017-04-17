@@ -164,6 +164,12 @@ evalStatCFBE cenv (Plus l r) = let (NumV l') = (evalStatCFBE cenv l)
 evalStatCFBE cenv (Minus l r) = let (NumV l') = (evalStatCFBE cenv l)
                                     (NumV r') = (evalStatCFBE cenv r)
                                 in (NumV (l'-r'))
+evalStatCFBE cenv (Mult l r) = let (NumV l') = (evalStatCFBE cenv l)
+                                   (NumV r') = (evalStatCFBE cenv r)
+                                in (NumV (l' * r'))
+evalStatCFBE cenv (Div l r) = let (NumV l') = (evalStatCFBE cenv l)
+                                  (NumV r') = (evalStatCFBE cenv r)
+                                in (NumV (div l' r'))
 evalStatCFBE cenv (Lambda i b) = (ClosureV i b cenv)
 evalStatCFBE cenv (App f a) = let (ClosureV i b e) = (evalStatCFBE cenv f)
                                   a' = (evalStatCFBE cenv a)
@@ -272,9 +278,22 @@ elabCFBAE (MultX l r) = (Mult (elabCFBAE l) (elabCFBAE r))
 elabCFBAE (DivX l r) = (Div (elabCFBAE l) (elabCFBAE r))
 elabCFBAE (BindX x v b) = (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
 elabCFBAE (IdX x) = (Id x)
+elabCFBAE (LambdaX x b) = (Lambda x (elabCFBAE b))
+elabCFBAE (AppX b v) = (App (elabCFBAE b) (elabCFBAE v))
 
---evalCFBAE :: EnvS -> CFBAE -> CFAEVal
---evalCFBAE cenv (Plus l r) = let (NumV l') = (elabCFBAE cenv l)
-  --                              (NumV r') = (elabCFBAE cenv r)
-    --                          in (NumV (l'+r'))
+evalCFBAE :: EnvS -> CFBAE -> CFAEVal
+evalCFBAE cenv (PlusX l r) = evalStatCFBE cenv (elabCFBAE (PlusX l r))
+evalCFBAE cenv (MinusX l r) = evalStatCFBE cenv (elabCFBAE (MinusX l r))
+evalCFBAE cenv (MultX l r) = evalStatCFBE cenv (elabCFBAE (MultX l r))
+evalCFBAE cenv (DivX l r) = evalStatCFBE cenv (elabCFBAE (DivX l r))
+evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
+evalCFBAE cenv (LambdaX x b) = evalStatCFBE cenv (elabCFBAE (LambdaX x b))
+evalCFBAE cenv (AppX b v) = evalStatCFBE cenv (App (elabCFBAE b) (elabCFBAE v))
+
+interpCFBAE :: String -> CFAEVal
+interpCFBAE = (evalCFBAE []) . parseCFBAE
+
+
+
+
 
