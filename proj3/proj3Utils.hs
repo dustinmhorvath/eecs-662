@@ -39,6 +39,9 @@ data CFAE where
   App :: CFAE -> CFAE -> CFAE
   Id :: String -> CFAE
   If0 :: CFAE -> CFAE -> CFAE -> CFAE
+  --Including this here so that ex1 and ex2 can share the same data type.
+  --Closure is not used by interpDynCFAE
+  Closure :: String -> CFAE -> EnvS -> CFAE
   deriving (Show,Eq)
 
 
@@ -140,117 +143,40 @@ interpDynCFAE = (evalDynCFAE []) . parseCFAE
 -- EXERCISE 2
 
 
--- Parser
-
--- CFAEb AST Definition
-
-data CFAEb where
-  CNum :: Int -> CFAEb
-  CPlus :: CFAEb -> CFAEb -> CFAEb
-  CMinus :: CFAEb -> CFAEb -> CFAEb
-  CMult :: CFAEb -> CFAEb -> CFAEb
-  CDiv :: CFAEb -> CFAEb -> CFAEb
-  CBind :: String -> CFAEb -> CFAEb -> CFAEb
-  CLambda :: String -> CFAEb -> CFAEb
-  CApp :: CFAEb -> CFAEb -> CFAEb
-  CId :: String -> CFAEb
-  CIf :: CFAEb -> CFAEb -> CFAEb -> CFAEb
-  Closure :: String -> CFAEb -> CEnv -> CFAEb
-  deriving (Show,Eq)
-
-exprC :: Parser CFAEb
-exprC = buildExpressionParser opTableC termC
-
-opTableC = [ [ inFix "*" CMult AssocLeft
-             , inFix "/" CDiv AssocLeft ]
-           , [ inFix "+" CPlus AssocLeft
-             , inFix "-" CMinus AssocLeft ]
-           ]
-
-numExprC :: Parser CFAEb
-numExprC = do i <- integer lexer
-              return (CNum (fromInteger i))
-
-identExprC :: Parser CFAEb
-identExprC = do i <- identifier lexer
-                return (CId i)
-
-bindExprC :: Parser CFAEb
-bindExprC = do reserved lexer "bind"
-               i <- identifier lexer
-               reservedOp lexer "="
-               v <- exprC
-               reserved lexer "in"
-               e <- exprC
-               return (CBind i v e)
-              
-lambdaExprC :: Parser CFAEb
-lambdaExprC = do reserved lexer "lambda"
-                 i <- identifier lexer
-                 reserved lexer "in"
-                 e <- exprC
-                 return (CLambda i e)
-
-appExprC :: Parser CFAEb
-appExprC = do reserved lexer "app"
-              e1 <- exprC
-              e2 <- exprC
-              return (CApp e1 e2)
-
-ifExprC :: Parser CFAEb
-ifExprC = do reserved lexer "if"
-             c <- exprC
-             reserved lexer "then"
-             t <- exprC
-             reserved lexer "else"
-             e <- exprC
-             return (CIf c t e)
+-- NOTE: Sharing the datatype from CFAE so that parser can be shared as well
             
-             
-termC = parens lexer exprC
-        <|> numExprC
-        <|> identExprC
-        <|> bindExprC
-        <|> ifExprC
-        <|> lambdaExprC
-        <|> appExprC
-             
 -- Parser invocation
 
-parseCFAEb = parseString exprC
 
-parseCFAEbFile = parseFile exprC
+type EnvS = [(String,CFAEVal)]
 
-
-type CEnv = [(String,CFAEbVal)]
-
-data CFAEbVal where
-  NumV :: Int -> CFAEbVal
-  ClosureV :: String -> CFAEb -> CEnv -> CFAEbVal
+data CFAEVal where
+  NumV :: Int -> CFAEVal
+  ClosureV :: String -> CFAE -> EnvS -> CFAEVal
   deriving (Show,Eq)
 
 
-evalStatCFBE :: CEnv -> CFAEb -> CFAEbVal
-evalStatCFBE cenv (CNum x) = (NumV x)
-evalStatCFBE cenv (CPlus l r) = let (NumV l') = (evalStatCFBE cenv l)
+evalStatCFBE :: EnvS -> CFAE -> CFAEVal
+evalStatCFBE cenv (Num x) = (NumV x)
+evalStatCFBE cenv (Plus l r) = let (NumV l') = (evalStatCFBE cenv l)
+                                   (NumV r') = (evalStatCFBE cenv r)
+                               in (NumV (l'+r'))
+evalStatCFBE cenv (Minus l r) = let (NumV l') = (evalStatCFBE cenv l)
                                     (NumV r') = (evalStatCFBE cenv r)
-                                in (NumV (l'+r'))
-evalStatCFBE cenv (CMinus l r) = let (NumV l') = (evalStatCFBE cenv l)
-                                     (NumV r') = (evalStatCFBE cenv r)
-                                 in (NumV (l'-r'))
-evalStatCFBE cenv (CLambda i b) = (ClosureV i b cenv)
-evalStatCFBE cenv (CApp f a) = let (ClosureV i b e) = (evalStatCFBE cenv f)
-                                   a' = (evalStatCFBE cenv a)
-                               in evalStatCFBE ((i,a'):e) b
-evalStatCFBE cenv (CId id) = case (lookup id cenv) of
-                               Just x -> x
-                               Nothing -> error "Varible not found"
-evalStatCFBE cenv (CIf c t e) = let (NumV c') = (evalStatCFBE cenv c) in
+                                in (NumV (l'-r'))
+evalStatCFBE cenv (Lambda i b) = (ClosureV i b cenv)
+evalStatCFBE cenv (App f a) = let (ClosureV i b e) = (evalStatCFBE cenv f)
+                                  a' = (evalStatCFBE cenv a)
+                              in evalStatCFBE ((i,a'):e) b
+evalStatCFBE cenv (Id id) = case (lookup id cenv) of
+                              Just x -> x
+                              Nothing -> error "Variable not found"
+evalStatCFBE cenv (If0 c t e) = let (NumV c') = (evalStatCFBE cenv c) in
                                   if c'==0 then (evalStatCFBE cenv t) else (evalStatCFBE cenv e)
 
 -- We're getting values out at the end now
-interpStatCFAEb :: String -> CFAEbVal
-interpStatCFAEb = (evalStatCFBE []) . parseCFAEb
+interpStatCFAE :: String -> CFAEVal
+interpStatCFAE = (evalStatCFBE []) . parseCFAE
 
 
 
