@@ -182,66 +182,99 @@ interpStatCFAE = (evalStatCFBE []) . parseCFAE
 
 -- EXERCISE 3
 
---exprX :: Parser CCFAE
---exprX = buildExpressionParser opTableX termX
---
---opTableX = [ [ inFix "*" MultX AssocLeft
---            , inFix "/" DivX AssocLeft ]
---          , [ inFix "+" PlusX AssocLeft
---            , inFix "-" MinusX AssocLeft ]
---          ]
---
---numExprX :: Parser CCFAE
---numExprX = do i <- integer lexer
---              return (NumX (fromInteger i))
---
---identExprX :: Parser CCFAE
---identExprX = do i <- identifier lexer
---                return (IdX i)
---
---bindExprX :: Parser CCFAE
---bindExprX = do reserved lexer "bind"
---               i <- identifier lexer
---               reservedOp lexer "="
---               v <- exprX
---               reserved lexer "in"
---               e <- exprX
---               return (BindX i v e)
---              
---lambdaExprX :: Parser CCFAE
---lambdaExprX = do reserved lexer "lambda"
---                 i <- identifier lexer
---                 reserved lexer "in"
---                 e <- exprX
---                 return (LambdaX i e)
---
---appExprX :: Parser CCFAE
---appExprX = do reserved lexer "app"
---              e1 <- exprX
---              e2 <- exprX
---              return (AppX e1 e2)
---
---ifExprX :: Parser CCFAE
---ifExprX = do reserved lexer "if"
---             c <- exprX
---             reserved lexer "then"
---             t <- exprX
---             reserved lexer "else"
---             e <- exprX
---             return (IfX c t e)
---            
---             
---termX = parens lexer exprX
---       <|> numExprX
---       <|> identExprX
---       <|> bindExprX
---       <|> ifExprX
---       <|> lambdaExprX
---       <|> appExprX
---             
----- Parser invocation
---
-----parseCCFAE = parseString exprX
---
-----parseCCFAEFile = parseFile exprX
---
+-- CFBAE Parser
+
+-- CFBAE AST Definition
+
+data CFBAE where
+  NumX :: Int -> CFBAE
+  PlusX :: CFBAE -> CFBAE -> CFBAE
+  MinusX :: CFBAE -> CFBAE -> CFBAE
+  MultX :: CFBAE -> CFBAE -> CFBAE
+  DivX :: CFBAE -> CFBAE -> CFBAE
+  BindX :: String -> CFBAE -> CFBAE -> CFBAE
+  LambdaX :: String -> CFBAE -> CFBAE
+  AppX :: CFBAE -> CFBAE -> CFBAE
+  IdX :: String -> CFBAE
+  IfX :: CFBAE -> CFBAE -> CFBAE -> CFBAE
+  deriving (Show,Eq)
+
+-- Parser
+
+exprX :: Parser CFBAE
+exprX = buildExpressionParser opTableX termX
+
+opTableX = [ [ inFix "*" MultX AssocLeft
+            , inFix "/" DivX AssocLeft ]
+          , [ inFix "+" PlusX AssocLeft
+            , inFix "-" MinusX AssocLeft ]
+          ]
+
+numExprX :: Parser CFBAE
+numExprX = do i <- integer lexer
+              return (NumX (fromInteger i))
+
+identExprX :: Parser CFBAE
+identExprX = do i <- identifier lexer
+                return (IdX i)
+
+bindExprX :: Parser CFBAE
+bindExprX = do reserved lexer "bind"
+               i <- identifier lexer
+               reservedOp lexer "="
+               v <- exprX
+               reserved lexer "in"
+               e <- exprX
+               return (BindX i v e)
+              
+lambdaExprX :: Parser CFBAE
+lambdaExprX = do reserved lexer "lambda"
+                 i <- identifier lexer
+                 reserved lexer "in"
+                 e <- exprX
+                 return (LambdaX i e)
+
+appExprX :: Parser CFBAE
+appExprX = do reserved lexer "app"
+              e1 <- exprX
+              e2 <- exprX
+              return (AppX e1 e2)
+
+ifExprX :: Parser CFBAE
+ifExprX = do reserved lexer "if"
+             c <- exprX
+             reserved lexer "then"
+             t <- exprX
+             reserved lexer "else"
+             e <- exprX
+             return (IfX c t e)
+            
+             
+termX = parens lexer exprX
+       <|> numExprX
+       <|> identExprX
+       <|> bindExprX
+       <|> ifExprX
+       <|> lambdaExprX
+       <|> appExprX
+             
+-- Parser invocation
+
+parseCFBAE = parseString exprX
+
+parseCFBAEFile = parseFile exprX
+
+elabCFBAE :: CFBAE -> CFAE
+elabCFBAE (NumX n) = (Num n)
+elabCFBAE (PlusX l r) = (Plus (elabCFBAE l) (elabCFBAE r))
+elabCFBAE (MinusX l r) = (Minus (elabCFBAE l) (elabCFBAE r))
+elabCFBAE (MultX l r) = (Mult (elabCFBAE l) (elabCFBAE r))
+elabCFBAE (DivX l r) = (Div (elabCFBAE l) (elabCFBAE r))
+elabCFBAE (BindX x v b) = (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
+elabCFBAE (IdX x) = (Id x)
+
+--evalCFBAE :: EnvS -> CFBAE -> CFAEVal
+--evalCFBAE cenv (Plus l r) = let (NumV l') = (elabCFBAE cenv l)
+  --                              (NumV r') = (elabCFBAE cenv r)
+    --                          in (NumV (l'+r'))
+
