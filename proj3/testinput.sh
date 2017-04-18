@@ -10,4 +10,8 @@ interpCFBAE "if0 1 then 0 else 10"
 interpCFBAE "2 + 2 + 2 + 2 + 2"
 interpCFBAE "2 + (app (lambda x in x + 5) 3)"
 interpCFBAE "bind x = 3 in (x + 7)"
+interpCFBAE "app inc 9"
+interpCFBAE "app inc (app inc 8)"
+interpCFBAE "app dec 11"
+interpCFBAE "app dec (app dec 12)"
 :quit

@@ -20,11 +20,14 @@ import Text.ParserCombinators.Parsec.Token
 import ParserUtils
 
 --
--- Project utilities for developing CFAE and CFBAE
--- interpreters.
+-- "Project utilities for developing CFAE and CFBAE
+-- interpreters."
 --
--- Author: Perry Alexander
--- Date: 6 April 2017
+-- Author: Dustin Horvath
+-- Date: 20 April 2017
+--
+-- Base code pulled from http://ku-sldg.github.io/plih//haskell/proj3Utils.hs
+-- and text http://ku-sldg.github.io/plih/
 --
 
 -- CFAE AST Definition
@@ -46,7 +49,6 @@ data CFAE where
 
 
 type Env = [(String,CFAE)]
---type Cont = [(String,TFBAE)]
 
 -- Parser
 
@@ -106,6 +108,7 @@ parseCFAEFile = parseFile expr
 
 -- EXERCISE 1
 
+--Note: this implementation doesn't provide much error checking
 evalDynCFAE :: Env -> CFAE -> CFAE
 evalDynCFAE env (Num x) = (Num x)
 
@@ -115,8 +118,6 @@ evalDynCFAE env (Plus t1 t2) = let (Num v1) = (evalDynCFAE env t1)
 evalDynCFAE env (Minus t1 t2) = let (Num v1) = (evalDynCFAE env t1)
                                     (Num v2) = (evalDynCFAE env t2)
                                 in (Num (v1-v2))
-
-
 evalDynCFAE env (Mult t1 t2) = let (Num v1) = (evalDynCFAE env t1)
                                    (Num v2) = (evalDynCFAE env t2)
                                in (Num (v1*v2))
@@ -143,17 +144,18 @@ interpDynCFAE = (evalDynCFAE []) . parseCFAE
 -- EXERCISE 2
 
 
--- NOTE: Sharing the datatype from CFAE so that parser can be shared as well
-            
+
 -- Parser invocation
 
 
 type EnvS = [(String,CFAEVal)]
 
+-- Value type for closures
 data CFAEVal where
   NumV :: Int -> CFAEVal
   ClosureV :: String -> CFAE -> EnvS -> CFAEVal
   deriving (Show,Eq)
+-- NOTE: Sharing the datatype from CFAE so that parser can be shared as well
 
 
 evalStatCFBE :: EnvS -> CFAE -> CFAEVal
@@ -183,8 +185,6 @@ evalStatCFBE cenv (If0 c t e) = let (NumV c') = (evalStatCFBE cenv c) in
 -- We're getting values out at the end now
 interpStatCFAE :: String -> CFAEVal
 interpStatCFAE = (evalStatCFBE []) . parseCFAE
-
-
 
 -- EXERCISE 3
 
@@ -255,7 +255,6 @@ if0ExprX = do reserved lexer "if0"
               e <- exprX
               return (If0X c t e)
 
-
 termX = parens lexer exprX
        <|> numExprX
        <|> bindExprX
@@ -282,6 +281,9 @@ elabCFBAE (LambdaX x b) = (Lambda x (elabCFBAE b))
 elabCFBAE (AppX b v) = (App (elabCFBAE b) (elabCFBAE v))
 elabCFBAE (If0X c t e) = (If0 (elabCFBAE c) (elabCFBAE t) (elabCFBAE e))
 
+-- eval calls evalStatCFBE, and passes the *first* (toplevel) CFAE that
+-- evalStatCFBE can evaluate. elabCFBAE is needed to recurse down and
+-- convert CFBAE datatypes into CFAE types that evalStatCFBE can understand.
 evalCFBAE :: EnvS -> CFBAE -> CFAEVal
 evalCFBAE cenv (NumX n) = evalStatCFBE cenv (elabCFBAE (NumX n))
 evalCFBAE cenv (PlusX l r) = evalStatCFBE cenv (elabCFBAE (PlusX l r))
@@ -291,11 +293,18 @@ evalCFBAE cenv (DivX l r) = evalStatCFBE cenv (elabCFBAE (DivX l r))
 evalCFBAE cenv (LambdaX x b) = evalStatCFBE cenv (elabCFBAE (LambdaX x b))
 evalCFBAE cenv (AppX b v) = evalStatCFBE cenv (elabCFBAE (AppX b v))
 evalCFBAE cenv (If0X c t e) = evalStatCFBE cenv (elabCFBAE (If0X c t e))
-evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
 evalCFBAE cenv (IdX x) = evalStatCFBE cenv (elabCFBAE (IdX x))
+evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
+
+-- ClosureV "x" (Plus (Id "x") (Num 1)) []
+
+prelude = [ 
+            ("inc", ClosureV "x" (Plus (Id "x") (Num 1)) []) ,
+            ("dec", ClosureV "x" (Minus (Id "x") (Num 1)) [])
+          ]
 
 interpCFBAE :: String -> CFAEVal
-interpCFBAE = (evalCFBAE []) . parseCFBAE
+interpCFBAE = (evalCFBAE prelude) . parseCFBAE
 
 
 
