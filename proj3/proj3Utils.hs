@@ -92,10 +92,10 @@ if0Expr = do reserved lexer "if0"
              
 term = parens lexer expr
        <|> numExpr
-       <|> identExpr
        <|> if0Expr
        <|> lambdaExpr
        <|> appExpr
+       <|> identExpr
              
 -- Parser invocation
 
@@ -135,7 +135,7 @@ evalDynCFAE env (App f a) =  let (Lambda i b) = (evalDynCFAE env f)
                              in evalDynCFAE ((i,a'):env) b
 evalDynCFAE env (Id id) = case (lookup id env) of
                             Just x -> x
-                            Nothing -> error "Varible not found"
+                            Nothing -> error "Variable not found"
 
 interpDynCFAE :: String -> CFAE
 interpDynCFAE = (evalDynCFAE []) . parseCFAE
@@ -202,7 +202,7 @@ data CFBAE where
   LambdaX :: String -> CFBAE -> CFBAE
   AppX :: CFBAE -> CFBAE -> CFBAE
   IdX :: String -> CFBAE
-  IfX :: CFBAE -> CFBAE -> CFBAE -> CFBAE
+  If0X :: CFBAE -> CFBAE -> CFBAE -> CFBAE
   deriving (Show,Eq)
 
 -- Parser
@@ -246,24 +246,24 @@ appExprX = do reserved lexer "app"
               e2 <- exprX
               return (AppX e1 e2)
 
-ifExprX :: Parser CFBAE
-ifExprX = do reserved lexer "if"
-             c <- exprX
-             reserved lexer "then"
-             t <- exprX
-             reserved lexer "else"
-             e <- exprX
-             return (IfX c t e)
-            
-             
+if0ExprX :: Parser CFBAE
+if0ExprX = do reserved lexer "if0"
+              c <- exprX
+              reserved lexer "then"
+              t <- exprX
+              reserved lexer "else"
+              e <- exprX
+              return (If0X c t e)
+
+
 termX = parens lexer exprX
        <|> numExprX
-       <|> identExprX
        <|> bindExprX
-       <|> ifExprX
+       <|> if0ExprX
        <|> lambdaExprX
        <|> appExprX
-             
+       <|> identExprX
+
 -- Parser invocation
 
 parseCFBAE = parseString exprX
@@ -280,15 +280,19 @@ elabCFBAE (BindX x v b) = (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
 elabCFBAE (IdX x) = (Id x)
 elabCFBAE (LambdaX x b) = (Lambda x (elabCFBAE b))
 elabCFBAE (AppX b v) = (App (elabCFBAE b) (elabCFBAE v))
+elabCFBAE (If0X c t e) = (If0 (elabCFBAE c) (elabCFBAE t) (elabCFBAE e))
 
 evalCFBAE :: EnvS -> CFBAE -> CFAEVal
+evalCFBAE cenv (NumX n) = evalStatCFBE cenv (elabCFBAE (NumX n))
 evalCFBAE cenv (PlusX l r) = evalStatCFBE cenv (elabCFBAE (PlusX l r))
 evalCFBAE cenv (MinusX l r) = evalStatCFBE cenv (elabCFBAE (MinusX l r))
 evalCFBAE cenv (MultX l r) = evalStatCFBE cenv (elabCFBAE (MultX l r))
 evalCFBAE cenv (DivX l r) = evalStatCFBE cenv (elabCFBAE (DivX l r))
-evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
 evalCFBAE cenv (LambdaX x b) = evalStatCFBE cenv (elabCFBAE (LambdaX x b))
-evalCFBAE cenv (AppX b v) = evalStatCFBE cenv (App (elabCFBAE b) (elabCFBAE v))
+evalCFBAE cenv (AppX b v) = evalStatCFBE cenv (elabCFBAE (AppX b v))
+evalCFBAE cenv (If0X c t e) = evalStatCFBE cenv (elabCFBAE (If0X c t e))
+evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
+evalCFBAE cenv (IdX x) = evalStatCFBE cenv (elabCFBAE (IdX x))
 
 interpCFBAE :: String -> CFAEVal
 interpCFBAE = (evalCFBAE []) . parseCFBAE
