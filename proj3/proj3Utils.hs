@@ -281,21 +281,6 @@ elabCFBAE (LambdaX x b) = (Lambda x (elabCFBAE b))
 elabCFBAE (AppX b v) = (App (elabCFBAE b) (elabCFBAE v))
 elabCFBAE (If0X c t e) = (If0 (elabCFBAE c) (elabCFBAE t) (elabCFBAE e))
 
--- eval calls evalStatCFBE, and passes the *first* (toplevel) CFAE that
--- evalStatCFBE can evaluate. elabCFBAE is needed to recurse down and
--- convert CFBAE datatypes into CFAE types that evalStatCFBE can understand.
-evalCFBAE :: EnvS -> CFBAE -> CFAEVal
-evalCFBAE cenv (NumX n) = evalStatCFBE cenv (elabCFBAE (NumX n))
-evalCFBAE cenv (PlusX l r) = evalStatCFBE cenv (elabCFBAE (PlusX l r))
-evalCFBAE cenv (MinusX l r) = evalStatCFBE cenv (elabCFBAE (MinusX l r))
-evalCFBAE cenv (MultX l r) = evalStatCFBE cenv (elabCFBAE (MultX l r))
-evalCFBAE cenv (DivX l r) = evalStatCFBE cenv (elabCFBAE (DivX l r))
-evalCFBAE cenv (LambdaX x b) = evalStatCFBE cenv (elabCFBAE (LambdaX x b))
-evalCFBAE cenv (AppX b v) = evalStatCFBE cenv (elabCFBAE (AppX b v))
-evalCFBAE cenv (If0X c t e) = evalStatCFBE cenv (elabCFBAE (If0X c t e))
-evalCFBAE cenv (IdX x) = evalStatCFBE cenv (elabCFBAE (IdX x))
-evalCFBAE cenv (BindX x v b) = evalStatCFBE cenv (App (Lambda x (elabCFBAE b)) (elabCFBAE v))
-
 -- ClosureV "x" (Plus (Id "x") (Num 1)) []
 
 prelude = [ 
@@ -304,7 +289,8 @@ prelude = [
           ]
 
 interpCFBAE :: String -> CFAEVal
-interpCFBAE = (evalCFBAE prelude) . parseCFBAE
+--interpCFBAE = (evalCFBAE prelude) . parseCFBAE
+interpCFBAE = ((evalStatCFBE prelude) . (elabCFBAE)) . parseCFBAE
 
 
 
