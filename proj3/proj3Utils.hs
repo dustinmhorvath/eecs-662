@@ -42,9 +42,6 @@ data CFAE where
   App :: CFAE -> CFAE -> CFAE
   Id :: String -> CFAE
   If0 :: CFAE -> CFAE -> CFAE -> CFAE
-  --Including this here so that ex1 and ex2 can share the same data type.
-  --Closure is not used by interpDynCFAE
-  Closure :: String -> CFAE -> EnvS -> CFAE
   deriving (Show,Eq)
 
 
@@ -289,7 +286,6 @@ prelude = [
           ]
 
 interpCFBAE :: String -> CFAEVal
---interpCFBAE = (evalCFBAE prelude) . parseCFBAE
 interpCFBAE = ((evalStatCFBE prelude) . (elabCFBAE)) . parseCFBAE
 
 
