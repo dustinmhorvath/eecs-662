@@ -29,6 +29,10 @@ import ParserUtils
 -- Base code pulled from http://ku-sldg.github.io/plih//haskell/proj3Utils.hs
 -- and text http://ku-sldg.github.io/plih/
 --
+-- TEST: a simple test set of input can be performed by piping the test file
+-- into GHCI like so:
+-- `ghci < testinput.sh`
+-- All outputs should be the value '10'
 
 -- CFAE AST Definition
 
@@ -278,6 +282,8 @@ elabCFBAE (LambdaX x b) = (Lambda x (elabCFBAE b))
 elabCFBAE (AppX b v) = (App (elabCFBAE b) (elabCFBAE v))
 elabCFBAE (If0X c t e) = (If0 (elabCFBAE c) (elabCFBAE t) (elabCFBAE e))
 
+-- I got this by just running a lambda for the function that I want through
+-- the interpreter:
 -- ClosureV "x" (Plus (Id "x") (Num 1)) []
 
 prelude = [ 
